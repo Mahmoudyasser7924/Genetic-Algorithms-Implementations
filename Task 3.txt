@@ -1,0 +1,183 @@
+import random
+ 
+# Number of individuals in each generation
+POPULATION_SIZE = 100
+ 
+# Valid genes
+GENES = '''abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOP
+QRSTUVWXYZ 1234567890, .-;:_!"#%&/()=?@${[]}'''
+ 
+# Target string to be generated
+TARGET = "I love GeeksforGeeks"
+ 
+class Individual(object):
+    '''
+    Class representing individual in population
+    '''
+    def __init__(self, chromosome):
+        self.chromosome = chromosome
+        self.fitness = self.cal_fitness()
+ 
+    @classmethod
+    def mutated_genes(self):
+        '''
+        create random genes for mutation
+        '''
+        global GENES
+        gene = random.choice(GENES)
+        return gene
+ 
+    @classmethod
+    def create_gnome(self):
+        '''
+        create chromosome or string of genes
+        '''
+        global TARGET
+        gnome_len = len(TARGET)
+        return [self.mutated_genes() for _ in range(gnome_len)]
+ 
+    def mate(self, par2):
+        '''
+        Perform mating and produce new offspring
+        '''
+ 
+        # chromosome for offspring
+        child_chromosome = []
+        for gp1, gp2 in zip(self.chromosome, par2.chromosome):   
+ 
+            # random probability 
+            prob = random.random()
+ 
+            # if prob is less than 0.45, insert gene
+            # from parent 1
+            if prob < 0.45:
+                child_chromosome.append(gp1)
+ 
+            # if prob is between 0.45 and 0.90, insert
+            # gene from parent 2
+            elif prob < 0.90:
+                child_chromosome.append(gp2)
+ 
+            # otherwise insert random gene(mutate),
+            # for maintaining diversity
+            else:
+                child_chromosome.append(self.mutated_genes())
+ 
+        # create new Individual(offspring) using
+        # generated chromosome for offspring
+        return Individual(child_chromosome)
+ 
+    def cal_fitness(self):
+        '''
+        Calculate fittness score, it is the number of
+        characters in string which differ from target
+        string.
+        '''
+        global TARGET
+        fitness = 0
+        for gs, gt in zip(self.chromosome, TARGET):
+            if gs != gt: fitness+= 1
+        return fitness
+ 
+# Driver code
+def main():
+    global POPULATION_SIZE
+ 
+    #current generation
+    generation = 1
+ 
+    found = False
+    population = []
+ 
+    # create initial population
+    for _ in range(POPULATION_SIZE):
+                gnome = Individual.create_gnome()
+                population.append(Individual(gnome))
+ 
+    while not found:
+ 
+        # sort the population in increasing order of fitness score
+        population = sorted(population, key = lambda x:x.fitness)
+ 
+        # if the individual having lowest fitness score ie.
+        # 0 then we know that we have reached to the target
+        # and break the loop
+        if population[0].fitness <= 0:
+            found = True
+            break
+ 
+        # Otherwise generate new offsprings for new generation
+        new_generation = []
+ 
+        # Perform Elitism, that mean 10% of fittest population
+        # goes to the next generation
+        s = int((10*POPULATION_SIZE)/100)
+        new_generation.extend(population[:s])
+ 
+        # From 50% of fittest population, Individuals
+        # will mate to produce offspring
+        s = int((90*POPULATION_SIZE)/100)
+        for _ in range(s):
+            parent1 = random.choice(population[:50])
+            parent2 = random.choice(population[:50])
+            child = parent1.mate(parent2)
+            new_generation.append(child)
+ 
+        population = new_generation
+ 
+        print("Generation: {}\tString: {}\tFitness: {}".\
+              format(generation,
+              "".join(population[0].chromosome),
+              population[0].fitness))
+ 
+        generation += 1
+ 
+     
+    print("Generation: {}\tString: {}\tFitness: {}".\
+          format(generation,
+          "".join(population[0].chromosome),
+          population[0].fitness))
+ 
+if __name__ == '__main__':
+    main()
+#________________________________________
+import numpy
+def cal_pop_fitness(equation_inputs, pop):
+    # Calculating the fitness value of each solution in the current population.
+    # The fitness function caulcuates the sum of products between each input and its corresponding weight.
+    fitness = numpy.sum(pop*equation_inputs, axis=1)
+    return fitness
+
+def select_mating_pool(pop, fitness, num_parents):
+    # Selecting the best individuals in the current generation as parents for producing the offspring of the next generation.
+    parents = numpy.empty((num_parents, pop.shape[1]))
+    for parent_num in range(num_parents):
+        max_fitness_idx = numpy.where(fitness == numpy.max(fitness))
+        max_fitness_idx = max_fitness_idx[0][0]
+        parents[parent_num, :] = pop[max_fitness_idx, :]
+        fitness[max_fitness_idx] = -99999999999
+    return parents
+
+def crossover(parents, offspring_size):
+    offspring = numpy.empty(offspring_size)
+    # The point at which crossover takes place between two parents. Usually it is at the center.
+    crossover_point = numpy.uint8(offspring_size[1]/2)
+
+    for k in range(offspring_size[0]):
+        # Index of the first parent to mate.
+        parent1_idx = k%parents.shape[0]
+        # Index of the second parent to mate.
+        parent2_idx = (k+1)%parents.shape[0]
+        # The new offspring will have its first half of its genes taken from the first parent.
+        offspring[k, 0:crossover_point] = parents[parent1_idx, 0:crossover_point]
+        # The new offspring will have its second half of its genes taken from the second parent.
+        offspring[k, crossover_point:] = parents[parent2_idx, crossover_point:]
+    return offspring
+
+def mutation(offspring_crossover):
+    # Mutation changes a single gene in each offspring randomly.
+    for idx in range(offspring_crossover.shape[0]):
+        # The random value to be added to the gene.
+        random_value = numpy.random.uniform(-1.0, 1.0, 1)
+        offspring_crossover[idx, 4] = offspring_crossover[idx, 4] + random_value
+    return offspring_crossover
